@@ -19,10 +19,7 @@ N_TRAIN, N_TEST = data_generator.n_train, data_generator.n_test
 BATCH_SIZE = args.batch_size
 
 def ranklist_by_heapq(user_pos_test, test_items, rating, Ks):
-    item_score = {}
-    for i in test_items:
-        item_score[i] = rating[i]
-
+    item_score = {i: rating[i] for i in test_items}
     K_max = max(Ks)
     K_max_item_score = heapq.nlargest(K_max, item_score, key=item_score.get)
 
@@ -51,10 +48,7 @@ def get_auc(item_score, user_pos_test):
     return auc
 
 def ranklist_by_sorted(user_pos_test, test_items, rating, Ks):
-    item_score = {}
-    for i in test_items:
-        item_score[i] = rating[i]
-
+    item_score = {i: rating[i] for i in test_items}
     K_max = max(Ks)
     K_max_item_score = heapq.nlargest(K_max, item_score, key=item_score.get)
 

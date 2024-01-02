@@ -83,9 +83,10 @@ def construct_prompting(item_attribute, item_list, candidate_list):
 
 ### read candidate 
 candidate_indices = pickle.load(open(file_path + 'candidate_indices','rb'))
-candidate_indices_dict = {}
-for index in range(candidate_indices.shape[0]):
-    candidate_indices_dict[index] = candidate_indices[index]
+candidate_indices_dict = {
+    index: candidate_indices[index]
+    for index in range(candidate_indices.shape[0])
+}
 ### read adjacency_list
 adjacency_list_dict = {}
 train_mat = pickle.load(open(file_path + 'train_mat','rb'))
@@ -97,15 +98,14 @@ toy_item_attribute = pd.read_csv(file_path + 'item_attribute.csv', names=['id','
 ### write augmented dict
 augmented_sample_dict = {}
 if os.path.exists(file_path + "augmented_sample_dict"): 
-    print(f"The file augmented_sample_dict exists.")
-    augmented_sample_dict = pickle.load(open(file_path + 'augmented_sample_dict','rb')) 
+    print("The file augmented_sample_dict exists.")
+    augmented_sample_dict = pickle.load(open(file_path + 'augmented_sample_dict','rb'))
 else:
-    print(f"The file augmented_sample_dict does not exist.")
+    print("The file augmented_sample_dict does not exist.")
     pickle.dump(augmented_sample_dict, open(file_path + 'augmented_sample_dict','wb')) 
 
 def file_reading():
-    augmented_attribute_dict = pickle.load(open(file_path + 'augmented_sample_dict','rb')) 
-    return augmented_attribute_dict
+    return pickle.load(open(file_path + 'augmented_sample_dict','rb'))
 
 # baidu
 def LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict, index, model_type, augmented_sample_dict):
@@ -117,55 +117,51 @@ def LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict,
         LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict, index, model_type, augmented_sample_dict)
     if index in augmented_sample_dict:
         return 0
-    else:
-        try: 
-            print(f"{index}")
-            prompt = construct_prompting(toy_item_attribute, adjacency_list_dict[index], candidate_indices_dict[index])
-            url = "http://llms-se.baidu-int.com:8200/chat/completions"
-            headers={
-                # "Content-Type": "application/json",
-                "Authorization": "Bearer your key"
-            
-            }
-            params={
-                "model": model_type,
-                "messages": [{"role": "user", "content": prompt}],
-                "temperature":0.6,
-                "max_tokens": 1000,
-                "stream": False, 
-                "top_p": 0.1
-            }
+    try: 
+        print(f"{index}")
+        prompt = construct_prompting(toy_item_attribute, adjacency_list_dict[index], candidate_indices_dict[index])
+        url = "http://llms-se.baidu-int.com:8200/chat/completions"
+        headers={
+            # "Content-Type": "application/json",
+            "Authorization": "Bearer your key"
 
-            response = requests.post(url=url, headers=headers,json=params)
-            message = response.json()
+        }
+        params={
+            "model": model_type,
+            "messages": [{"role": "user", "content": prompt}],
+            "temperature":0.6,
+            "max_tokens": 1000,
+            "stream": False, 
+            "top_p": 0.1
+        }
 
-            content = message['choices'][0]['message']['content']
-            print(f"content: {content}, model_type: {model_type}")
-            samples = content.split("::")
-            pos_sample = int(samples[0])
-            neg_sample = int(samples[1])
-            augmented_sample_dict[index] = {}
-            augmented_sample_dict[index][0] = pos_sample
-            augmented_sample_dict[index][1] = neg_sample
-            pickle.dump(augmented_sample_dict, open(file_path + 'augmented_sample_dict','wb'))
+        response = requests.post(url=url, headers=headers,json=params)
+        message = response.json()
 
-        # except ValueError as e:
-        except requests.exceptions.RequestException as e:
-            print("An HTTP error occurred:", str(e))
-            time.sleep(10)
-        except ValueError as ve:
-            print("An error occurred while parsing the response:", str(ve))
-            time.sleep(10)
-            LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict, index, "gpt-3.5-turbo-0613", augmented_sample_dict)
-        except KeyError as ke:
-            print("An error occurred while accessing the response:", str(ke))
-            time.sleep(10)
-            LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict, index, "gpt-3.5-turbo-0613", augmented_sample_dict)
-        except Exception as ex:
-            print("An unknown error occurred:", str(ex))
-            time.sleep(10)
-        
-        return 1
+        content = message['choices'][0]['message']['content']
+        print(f"content: {content}, model_type: {model_type}")
+        samples = content.split("::")
+        pos_sample = int(samples[0])
+        neg_sample = int(samples[1])
+        augmented_sample_dict[index] = {0: pos_sample, 1: neg_sample}
+        pickle.dump(augmented_sample_dict, open(file_path + 'augmented_sample_dict','wb'))
+
+    except requests.exceptions.RequestException as e:
+        print("An HTTP error occurred:", e)
+        time.sleep(10)
+    except ValueError as ve:
+        print("An error occurred while parsing the response:", ve)
+        time.sleep(10)
+        LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict, index, "gpt-3.5-turbo-0613", augmented_sample_dict)
+    except KeyError as ke:
+        print("An error occurred while accessing the response:", ke)
+        time.sleep(10)
+        LLM_request(toy_item_attribute, adjacency_list_dict, candidate_indices_dict, index, "gpt-3.5-turbo-0613", augmented_sample_dict)
+    except Exception as ex:
+        print("An unknown error occurred:", ex)
+        time.sleep(10)
+
+    return 1
 
 
 

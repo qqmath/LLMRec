@@ -4,12 +4,11 @@ from scipy.sparse import csr_matrix
 
 def build_sim(context):
     context_norm = context.div(torch.norm(context, p=2, dim=-1, keepdim=True))
-    sim = torch.sparse.mm(context_norm, context_norm.transpose(1, 0))
-    return sim
+    return torch.sparse.mm(context_norm, context_norm.transpose(1, 0))
 
 def build_knn_normalized_graph(adj, topk, is_sparse, norm_type):
     device = adj.device
-    knn_val, knn_ind = torch.topk(adj, topk, dim=-1)  
+    knn_val, knn_ind = torch.topk(adj, topk, dim=-1)
     n_item = knn_val.shape[0]
     n_data = knn_val.shape[0]*knn_val.shape[1]
     data = np.ones(n_data)
@@ -17,8 +16,7 @@ def build_knn_normalized_graph(adj, topk, is_sparse, norm_type):
         tuple_list = [[row, int(col)] for row in range(len(knn_ind)) for col in knn_ind[row]]  #
         row = [i[0] for i in tuple_list]  #
         col = [i[1] for i in tuple_list]  #
-        ii_graph = csr_matrix((data, (row, col)) ,shape=(n_item, n_item))
-        return ii_graph
+        return csr_matrix((data, (row, col)) ,shape=(n_item, n_item))
     else:
         weighted_adjacency_matrix = (torch.zeros_like(adj)).scatter_(-1, knn_ind, knn_val)
         return get_dense_laplacian(weighted_adjacency_matrix, normalization=norm_type)

@@ -125,9 +125,7 @@ def get_gpt_response_w_system(model_type, prompt):
             {"role": "user", "content": prompt},
         ]
     )
-    response = completion.choices[0].message.content
-    # print(response)  
-    return response
+    return completion.choices[0].message.content
 
 start_id = 0
 g_model_type = "gpt-3.5-turbo-0613" 
@@ -136,8 +134,7 @@ g_model_type = "gpt-3.5-turbo-0613"
 
 # toy_item_attribute, adjacency_list_dict, index, "gpt-4", augmented_user_profiling_dict
 def file_reading():
-    augmented_user_profiling_dict = pickle.load(open(file_path + 'augmented_user_profiling_dict','rb')) 
-    return augmented_user_profiling_dict
+    return pickle.load(open(file_path + 'augmented_user_profiling_dict','rb'))
 ## baidu user profile generate
 def LLM_request(toy_item_attribute, adjacency_list_dict, index, model_type, _, error_cnt):    
     # try:
@@ -382,12 +379,12 @@ error_cnt = 0
 ### read item_attribute
 toy_item_attribute = pd.read_csv(file_path + '/item_attribute.csv', names=['id','title', 'genre'])
 ### write augmented dict
-augmented_user_profiling_dict = {}  
+augmented_user_profiling_dict = {}
 if os.path.exists(file_path + "augmented_user_profiling_dict"): 
-    print(f"The file augmented_user_profiling_dict exists.")
-    augmented_user_profiling_dict = pickle.load(open(file_path + 'augmented_user_profiling_dict','rb')) 
+    print("The file augmented_user_profiling_dict exists.")
+    augmented_user_profiling_dict = pickle.load(open(file_path + 'augmented_user_profiling_dict','rb'))
 else:
-    print(f"The file augmented_user_profiling_dict does not exist.")
+    print("The file augmented_user_profiling_dict does not exist.")
     pickle.dump(augmented_user_profiling_dict, open(file_path + 'augmented_user_profiling_dict','wb'))
 
 ### read adjacency_list
