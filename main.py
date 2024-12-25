@@ -37,7 +37,7 @@ args = parse_args()
 class Trainer(object):
     def __init__(self, data_config):
        
-        self.task_name = "%s_%s_%s" % (datetime.now().strftime('%Y-%m-%d %H:%M:%S'), args.dataset, args.cf_model,)
+        self.task_name = f"{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_{args.dataset}_{args.cf_model}"
         self.logger = Logger(filename=self.task_name, is_debug=args.debug)
         self.logger.logging("PID: %d" % os.getpid())
         self.logger.logging(str(args))
@@ -50,31 +50,32 @@ class Trainer(object):
         self.n_layers = len(self.weight_size)
         self.regs = eval(args.regs)
         self.decay = self.regs[0]
- 
-        self.image_feats = np.load(args.data_path + '{}/image_feat.npy'.format(args.dataset))
-        self.text_feats = np.load(args.data_path + '{}/text_feat.npy'.format(args.dataset))
+
+        self.image_feats = np.load(f'{args.data_path}{args.dataset}/image_feat.npy')
+        self.text_feats = np.load(f'{args.data_path}{args.dataset}/text_feat.npy')
         self.image_feat_dim = self.image_feats.shape[-1]
         self.text_feat_dim = self.text_feats.shape[-1]
 
         self.ui_graph = self.ui_graph_raw = pickle.load(open(args.data_path + args.dataset + '/train_mat','rb'))
         # get user embedding  
         augmented_user_init_embedding = pickle.load(open(args.data_path + args.dataset + '/augmented_user_init_embedding','rb'))
-        augmented_user_init_embedding_list = []
-        for i in range(len(augmented_user_init_embedding)):
-            augmented_user_init_embedding_list.append(augmented_user_init_embedding[i])
+        augmented_user_init_embedding_list = [
+            augmented_user_init_embedding[i]
+            for i in range(len(augmented_user_init_embedding))
+        ]
         augmented_user_init_embedding_final = np.array(augmented_user_init_embedding_list)
         pickle.dump(augmented_user_init_embedding_final, open(args.data_path + args.dataset + '/augmented_user_init_embedding_final','wb'))
         self.user_init_embedding = pickle.load(open(args.data_path + args.dataset + '/augmented_user_init_embedding_final','rb'))
-        # get separate embedding matrix 
-        if args.dataset=='preprocessed_raw_MovieLens':
-            augmented_total_embed_dict = {'title':[] , 'genre':[], 'director':[], 'country':[], 'language':[]}   
-        elif args.dataset=='netflix_valid_item':
-            augmented_total_embed_dict = {'year':[] , 'title':[], 'director':[], 'country':[], 'language':[]}   
+        # get separate embedding matrix
+        if args.dataset == 'netflix_valid_item':
+            augmented_total_embed_dict = {'year':[] , 'title':[], 'director':[], 'country':[], 'language':[]}
+        elif args.dataset == 'preprocessed_raw_MovieLens':
+            augmented_total_embed_dict = {'title':[] , 'genre':[], 'director':[], 'country':[], 'language':[]}
         augmented_atttribute_embedding_dict = pickle.load(open(args.data_path + args.dataset + '/augmented_atttribute_embedding_dict','rb'))
         for value in augmented_atttribute_embedding_dict.keys():
             for i in range(len(augmented_atttribute_embedding_dict[value])):
                 augmented_total_embed_dict[value].append(augmented_atttribute_embedding_dict[value][i])   
-            augmented_total_embed_dict[value] = np.array(augmented_total_embed_dict[value])    
+            augmented_total_embed_dict[value] = np.array(augmented_total_embed_dict[value])
         pickle.dump(augmented_total_embed_dict, open(args.data_path + args.dataset + '/augmented_total_embed_dict','wb'))
         self.item_attribute_embedding = pickle.load(open(args.data_path + args.dataset + '/augmented_total_embed_dict','rb'))       
 
@@ -82,9 +83,9 @@ class Trainer(object):
         self.text_ui_index = {'x':[], 'y':[]}
 
         self.n_users = self.ui_graph.shape[0]
-        self.n_items = self.ui_graph.shape[1]        
+        self.n_items = self.ui_graph.shape[1]
         self.iu_graph = self.ui_graph.T
-  
+
         self.ui_graph = self.csr_norm(self.ui_graph, mean_flag=True)
         self.iu_graph = self.csr_norm(self.iu_graph, mean_flag=True)
         self.ui_graph = self.matrix_to_tensor(self.ui_graph)
@@ -92,8 +93,8 @@ class Trainer(object):
         self.image_ui_graph = self.text_ui_graph = self.ui_graph
         self.image_iu_graph = self.text_iu_graph = self.iu_graph
 
-        self.model_mm = MM_Model(self.n_users, self.n_items, self.emb_dim, self.weight_size, self.mess_dropout, self.image_feats, self.text_feats, self.user_init_embedding, self.item_attribute_embedding)      
-        self.model_mm = self.model_mm.cuda()  
+        self.model_mm = MM_Model(self.n_users, self.n_items, self.emb_dim, self.weight_size, self.mess_dropout, self.image_feats, self.text_feats, self.user_init_embedding, self.item_attribute_embedding)
+        self.model_mm = self.model_mm.cuda()
         self.decoder = Decoder(self.user_init_embedding.shape[1]).cuda()
 
 
@@ -102,7 +103,7 @@ class Trainer(object):
             {'params':self.model_mm.parameters()},      
         ]
             , lr=self.lr)  
-        
+
         self.de_optimizer = optim.AdamW(
         [
             {'params':self.decoder.parameters()},      
@@ -150,10 +151,9 @@ class Trainer(object):
 
     def feat_reg_loss_calculation(self, g_item_image, g_item_text, g_user_image, g_user_text):
         feat_reg = 1./2*(g_item_image**2).sum() + 1./2*(g_item_text**2).sum() \
-            + 1./2*(g_user_image**2).sum() + 1./2*(g_user_text**2).sum()        
+                + 1./2*(g_user_image**2).sum() + 1./2*(g_user_text**2).sum()
         feat_reg = feat_reg / self.n_items
-        feat_emb_loss = args.feat_reg_decay * feat_reg
-        return feat_emb_loss
+        return args.feat_reg_decay * feat_reg
 
     def prune_loss(self, pred, drop_rate):
         ind_sorted = np.argsort(pred.cpu().data).cuda()
@@ -169,8 +169,7 @@ class Trainer(object):
         y = F.normalize(y, p=2, dim=-1)
         tmp_loss = (1 - (x * y).sum(dim=-1)).pow_(alpha)
         tmp_loss = tmp_loss.mean()
-        loss = F.mse_loss(x, y)
-        return loss
+        return F.mse_loss(x, y)
 
     def sce_criterion(self, x, y, alpha=1):
         x = F.normalize(x, p=2, dim=-1)
@@ -183,8 +182,7 @@ class Trainer(object):
         self.model_mm.eval()
         with torch.no_grad():
             ua_embeddings, ia_embeddings, *rest = self.model_mm(self.ui_graph, self.iu_graph, self.image_ui_graph, self.image_iu_graph, self.text_ui_graph, self.text_iu_graph)
-        result = test_torch(ua_embeddings, ia_embeddings, users_to_test, is_val)
-        return result
+        return test_torch(ua_embeddings, ia_embeddings, users_to_test, is_val)
 
     def train(self):
 

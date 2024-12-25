@@ -12,9 +12,9 @@ class Data(object):
         self.path = path
         self.batch_size = batch_size
 
-        train_file = path + '/train.json'
-        val_file = path + '/val.json' 
-        test_file = path + '/test.json'
+        train_file = f'{path}/train.json'
+        val_file = f'{path}/val.json'
+        test_file = f'{path}/test.json'
 
         #get number of users and items
         self.n_users, self.n_items = 0, 0
@@ -68,7 +68,7 @@ class Data(object):
             if len(train_items) == 0:
                 continue
             uid = int(uid)
-            for idx, i in enumerate(train_items):
+            for i in train_items:
                 self.R[uid, i] = 1.
 
             self.train_items[uid] = train_items
@@ -94,16 +94,16 @@ class Data(object):
     def get_adj_mat(self):
         try:
             t1 = time()
-            adj_mat = sp.load_npz(self.path + '/s_adj_mat.npz')
-            norm_adj_mat = sp.load_npz(self.path + '/s_norm_adj_mat.npz')
-            mean_adj_mat = sp.load_npz(self.path + '/s_mean_adj_mat.npz')
+            adj_mat = sp.load_npz(f'{self.path}/s_adj_mat.npz')
+            norm_adj_mat = sp.load_npz(f'{self.path}/s_norm_adj_mat.npz')
+            mean_adj_mat = sp.load_npz(f'{self.path}/s_mean_adj_mat.npz')
             print('already load adj matrix', adj_mat.shape, time() - t1)
 
         except Exception:
             adj_mat, norm_adj_mat, mean_adj_mat = self.create_adj_mat()
-            sp.save_npz(self.path + '/s_adj_mat.npz', adj_mat)
-            sp.save_npz(self.path + '/s_norm_adj_mat.npz', norm_adj_mat)
-            sp.save_npz(self.path + '/s_mean_adj_mat.npz', mean_adj_mat)
+            sp.save_npz(f'{self.path}/s_adj_mat.npz', adj_mat)
+            sp.save_npz(f'{self.path}/s_norm_adj_mat.npz', norm_adj_mat)
+            sp.save_npz(f'{self.path}/s_mean_adj_mat.npz', mean_adj_mat)
         return adj_mat, norm_adj_mat, mean_adj_mat
 
     def create_adj_mat(self):

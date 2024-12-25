@@ -55,10 +55,7 @@ class MM_Model(nn.Module):
         self.tau = 0.5
 
     def mm(self, x, y):
-        if args.sparse:
-            return torch.sparse.mm(x, y)
-        else:
-            return torch.mm(x, y)
+        return torch.sparse.mm(x, y) if args.sparse else torch.mm(x, y)
     def sim(self, z1, z2):
         z1 = F.normalize(z1)
         z2 = F.normalize(z2)
@@ -110,15 +107,12 @@ class MM_Model(nn.Module):
 
         return torch.sparse.FloatTensor(indices, values, shape).to(torch.float32).cuda()  #
 
-    def para_dict_to_tenser(self, para_dict):  
+    def para_dict_to_tenser(self, para_dict):
         """
         :param para_dict: nn.ParameterDict()
         :return: tensor
         """
-        tensors = []
-
-        for beh in para_dict.keys():
-            tensors.append(para_dict[beh])
+        tensors = [para_dict[beh] for beh in para_dict.keys()]
         tensors = torch.stack(tensors, dim=0)
 
         return tensors
@@ -145,11 +139,11 @@ class MM_Model(nn.Module):
         image_feats = self.dropout(self.image_trans(self.image_feats))
         text_feats = self.dropout(self.text_trans(self.text_feats))
         user_feats = self.dropout(self.user_trans(self.user_feats.to(torch.float32)))
-        item_feats = {}
-        for key in self.item_feats.keys():
-            item_feats[key] = self.dropout(self.item_trans(self.item_feats[key]))
-
-        for i in range(args.layers):
+        item_feats = {
+            key: self.dropout(self.item_trans(self.item_feats[key]))
+            for key in self.item_feats.keys()
+        }
+        for _ in range(args.layers):
             image_user_feats = self.mm(ui_graph, image_feats)
             image_item_feats = self.mm(iu_graph, image_user_feats)
 
@@ -216,12 +210,10 @@ class Decoder(nn.Module):
         )
 
     def forward(self, u, i):
-        u_output = self.u_net(u.float())  
-        tensor_list = []
-        for index,value in enumerate(i.keys()):  
-            tensor_list.append(i[value]) 
+        u_output = self.u_net(u.float())
+        tensor_list = [i[value] for value in i.keys()]
         i_tensor = torch.stack(tensor_list)
-        i_output = self.i_net(i_tensor.float())  
+        i_output = self.i_net(i_tensor.float())
         return u_output, i_output  
 
 
